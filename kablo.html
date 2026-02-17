@@ -1,86 +1,85 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="bg">
 <head>    
     <meta charset="UTF-8">    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-    <title>IPTV Most Pro - Sunucu</title>    
+    <title>Most Pro - BG Archive</title>    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>    
     <style>        
-        body { background: #000; color: #fff; text-align: center; font-family: sans-serif; margin: 0; }
-        .player-box { position: sticky; top: 0; background: #000; padding: 15px; border-bottom: 2px solid #ff4500; z-index: 999; }
-        video { width: 100%; max-width: 750px; border-radius: 10px; background: #111; box-shadow: 0 0 20px #ff450066; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 20px; }        
-        button { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 13px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; }        
-        button:hover { background: #ff4500; border-color: #fff; transform: translateY(-3px); }
-        #status { font-size: 14px; color: #ff4500; margin-top: 10px; font-weight: bold; }
+        body { background: #0a0f0d; color: #fff; text-align: center; font-family: sans-serif; margin: 0; }
+        .player-box { position: sticky; top: 0; background: #0a0f0d; padding: 15px; border-bottom: 3px solid #00ff41; z-index: 1000; }
+        video { width: 100%; max-width: 800px; border-radius: 10px; background: #000; box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 20px; }        
+        button { background: #1a1a1a; color: #00ff41; border: 1px solid #00ff41; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }        
+        button:hover { background: #00ff41; color: #000; transform: scale(1.05); }
+        #status { font-size: 14px; color: #00ff41; margin-top: 10px; text-transform: uppercase; }
     </style>
 </head>
 <body>    
 
     <div class="player-box">        
-        <h2 style="margin:0; color:#ff4500; font-size: 20px;">MOST PRO <span style="color:#fff">ARCHIVE</span></h2>
+        <h2 style="margin:0; color:#00ff41;">BG TV ARCHIVE <span style="color:#fff">PRO</span></h2>
         <video id="video" controls autoplay playsinline></video>
-        <div id="status">Sunucu taranıyor...</div>
+        <div id="status">Сканиране на архива... (Arşiv Taranıyor)</div>
     </div>    
 
     <div id="buttons" class="grid"></div>
 
     <script>        
-        // Senin verdiğin açık sunucu adresi
-        const ARCHIVE_URL = "http://85.11.144.8/archive/";
+        // Bulgaristan yerel arşiv sunucusu
+        const BASE_URL = "http://85.11.144.8/archive/";
+        // Tarayıcı engeline takılmamak için basit bir proxy ekleyelim
+        const PROXY = "https://api.allorigins.win/raw?url=";
 
-        async function loadArchive() {            
+        async function scanArchive() {            
             try {                
-                // Sunucu dizinini okumaya çalışıyoruz
-                const res = await fetch(ARCHIVE_URL);
+                const res = await fetch(PROXY + encodeURIComponent(BASE_URL));
                 const text = await res.text();
-                
-                // HTML içindeki dosya linklerini ayıklıyoruz
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(text, 'text/html');
                 const links = Array.from(doc.querySelectorAll('a'));
                 
                 const btnDiv = document.getElementById('buttons');
                 btnDiv.innerHTML = '';
-                let count = 0;
-
+                
                 links.forEach(link => {
-                    const href = link.getAttribute('href');
-                    // Sadece video dosyalarını (m3u8 veya mp4) listele
-                    if (href.endsWith('.m3u8') || href.endsWith('.mp4') || href.endsWith('.ts')) {
+                    const folderName = link.innerText.replace('/', '');
+                    // Klasörleri (kanal isimlerini) ayıklıyoruz
+                    if (folderName && !folderName.includes('Parent Directory')) {
                         const btn = document.createElement('button');
-                        btn.innerText = link.innerText.replace(/_/g, ' ').replace('.m3u8', '');
-                        btn.onclick = () => play(ARCHIVE_URL + href, btn.innerText);
+                        btn.innerText = folderName;
+                        // Kanala tıklandığında içindeki canlı yayını (veya son kaydı) açar
+                        btn.onclick = () => playChannel(folderName);
                         btnDiv.appendChild(btn);
-                        count++;
                     }
                 });
-
-                if (count === 0) {
-                    document.getElementById('status').innerText = "Arşivde oynatılabilir dosya bulunamadı.";
-                } else {
-                    document.getElementById('status').innerText = count + " Dosya Hazır!";
-                }
+                document.getElementById('status').innerText = "Готов (Hazır)";
             } catch (e) { 
-                document.getElementById('status').innerText = "Sunucuya bağlanılamadı (CORS Engeli).";
-                console.error(e);
+                document.getElementById('status').innerText = "Грешка при свързване (Bağlantı Hatası)";
             }        
         }
 
-        function play(url, name) {            
+        function playChannel(channel) {            
             const video = document.getElementById('video');
-            document.getElementById('status').innerText = "Oynatılıyor: " + name;
+            // Arşiv sunucularında genelde kanal_adı/index.m3u8 veya kanal_adı.m3u8 olur
+            const streamUrl = `${BASE_URL}${channel}/${channel}.m3u8`;
             
+            document.getElementById('status').innerText = "Зареждане: " + channel;
+
             if (Hls.isSupported()) {
                 const hls = new Hls();
-                hls.loadSource(url);
+                hls.loadSource(streamUrl);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {                
-                video.src = url;            
-            }        
+                hls.on(Hls.Events.ERROR, () => {
+                    // Eğer kanal/kanal.m3u8 çalışmazsa direkt klasörü dene
+                    video.src = `${BASE_URL}${channel}/index.m3u8`;
+                });
+            } else {
+                video.src = streamUrl;
+            }
         }        
-        loadArchive();    
+        scanArchive();    
     </script>
 </body>
 </html>
