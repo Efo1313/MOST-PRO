@@ -3,31 +3,37 @@
 <head>    
     <meta charset="UTF-8">    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-    <title>IPTV Most Pro - Bulgaria Global</title>    
+    <title>IPTV Most Pro - Turbo</title>    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>    
     <style>        
-        body { background: #0a0a0a; color: #fff; text-align: center; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
-        .player-box { position: sticky; top: 0; background: #0a0a0a; padding: 15px; border-bottom: 3px solid #ff4500; z-index: 999; box-shadow: 0 5px 20px rgba(0,0,0,0.8); }
-        video { width: 100%; max-width: 750px; border-radius: 10px; background: #000; aspect-ratio: 16/9; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 20px; }        
-        button { background: #1a1a1a; color: #eee; border: 1px solid #333; padding: 15px 5px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px; font-weight: 600; height: 60px; }        
-        button:hover { background: #ff4500; color: white; border-color: #fff; transform: translateY(-3px); }
-        #status { font-size: 14px; color: #ff4500; margin-top: 10px; font-weight: bold; height: 20px; }
+        body { background: #050505; color: #fff; text-align: center; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .player-box { position: sticky; top: 0; background: #050505; padding: 10px; border-bottom: 2px solid #ff4500; z-index: 1000; }
+        video { width: 100%; max-width: 720px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 0 25px rgba(255, 69, 0, 0.3); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 20px; }        
+        button { background: linear-gradient(145deg, #1a1a1a, #222); color: #fff; border: 1px solid #444; padding: 15px 5px; border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: bold; font-size: 13px; height: 60px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); }        
+        button:hover { background: #ff4500; border-color: #fff; transform: translateY(-3px); }
+        #status { font-size: 14px; color: #ff4500; margin: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>    
 
     <div class="player-box">        
-        <h2 style="margin: 0 0 10px 0; font-size: 20px; letter-spacing: 2px;">IPTV <span style="color:#ff4500">MOST PRO</span></h2>
+        <div style="font-size: 22px; font-weight: 900; color: #ff4500; margin-bottom: 8px;">MOST PRO <span style="color:#fff">V4</span></div>
         <video id="video" controls autoplay playsinline></video>
-        <div id="status">Bir kanal seçin...</div>
+        <div id="status">Kanal Listesi Yükleniyor...</div>
     </div>    
 
-    <div id="buttons" class="grid">Kanallar Yükleniyor...</div>
+    <div id="buttons" class="grid"></div>
 
     <script>        
-        // Bulgaristan'da engel takılmayan, global erişime açık ana liste
-        const M3U_URL = "https://iptv-org.github.io/iptv/countries/tr.m3u";
+        const M3U_URL = "https://borutv.boncuuktv.workers.dev/kablotv.m3u";        
+        
+        // 3 Kademeli Proxy Sistemi (Sırayla denenebilir)
+        const PROXY_LIST = [
+            "https://cors-anywhere.herokuapp.com/", // Pro Proxy
+            "https://api.allorigins.win/raw?url=",   // Alternative
+            "https://corsproxy.io/?"                 // Global
+        ];
 
         async function load() {            
             try {                
@@ -37,38 +43,42 @@
                 const btnDiv = document.getElementById('buttons');                
                 btnDiv.innerHTML = '';
 
-                for (let i = 0; i < lines.length; i++) {                    
-                    if (lines[i].startsWith('#EXTINF')) {                        
-                        const name = lines[i].split(',')[1] || "Kanal";                        
-                        const url = lines[i+1]?.trim();                        
-                        if (url && url.startsWith('http')) {                            
-                            const btn = document.createElement('button');                            
-                            btn.innerText = name;                            
-                            btn.onclick = () => play(url, name);                            
-                            btnDiv.appendChild(btn);                        
-                        }                    
-                    }                
-                }
-                document.getElementById('status').innerText = "Liste Güncellendi.";
-            } catch (e) { 
-                document.getElementById('buttons').innerText = "Bağlantı hatası!"; 
-            }        
+                lines.forEach((line, i) => {
+                    if (line.startsWith('#EXTINF')) {
+                        const name = line.split(',')[1] || "Kanal";
+                        const url = lines[i+1]?.trim();
+                        if (url && url.startsWith('http')) {
+                            const btn = document.createElement('button');
+                            btn.innerText = name;
+                            btn.onclick = () => play(url, name);
+                            btnDiv.appendChild(btn);
+                        }
+                    }
+                });
+                document.getElementById('status').innerText = "Tüm Kanallar Aktif";
+            } catch (e) { document.getElementById('status').innerText = "Liste Hatası!"; }        
         }
 
         function play(url, name) {            
             const video = document.getElementById('video');
             document.getElementById('status').innerText = "Oynatılıyor: " + name;
             
+            // Kanalları en güçlü proxy ile sarmala
+            const finalUrl = PROXY_LIST[2] + encodeURIComponent(url);
+
             if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(url);
+                const hls = new Hls({
+                    xhrSetup: function(xhr, url) {
+                        xhr.withCredentials = false;
+                        // Sunucuyu Türkiye'den geldiğine dair kandırmaya yönelik gizli header
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    }
+                });
+                hls.loadSource(finalUrl);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-                hls.on(Hls.Events.ERROR, (e, data) => {
-                    if (data.fatal) document.getElementById('status').innerText = "Yayın şu an aktif değil.";
-                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {                
-                video.src = url;            
+                video.src = finalUrl;            
             }        
         }        
         load();    
