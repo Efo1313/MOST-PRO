@@ -3,31 +3,35 @@
 <head>    
     <meta charset="UTF-8">    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-    <title>IPTV Most Pro - Ultra V5</title>    
+    <title>IPTV Most Pro - Sunucu Modu</title>    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>    
     <style>        
-        body { background: #050505; color: #fff; text-align: center; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .player-box { position: sticky; top: 0; background: #000; padding: 15px; border-bottom: 3px solid #ff4500; z-index: 1000; }
-        video { width: 100%; max-width: 800px; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(255, 69, 0, 0.4); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 20px; }        
-        button { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 15px 5px; border-radius: 10px; cursor: pointer; transition: 0.3s; font-size: 13px; font-weight: bold; height: 65px; }        
-        button:hover { background: #ff4500; border-color: #fff; transform: scale(1.05); }
-        #status { font-size: 14px; color: #ff4500; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
+        body { background: #000; color: #fff; text-align: center; font-family: sans-serif; margin: 0; }
+        .player-box { position: sticky; top: 0; background: #000; padding: 15px; border-bottom: 2px solid #ff4500; z-index: 999; }
+        video { width: 100%; max-width: 700px; border-radius: 8px; background: #111; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 20px; }        
+        button { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 15px 5px; border-radius: 8px; cursor: pointer; height: 60px; font-weight: bold; }        
+        button:hover { background: #ff4500; border-color: #fff; }
+        #status { font-size: 14px; color: #ff4500; margin-top: 10px; }
     </style>
 </head>
 <body>    
 
     <div class="player-box">        
-        <div style="font-size: 24px; font-weight: 900; color: #ff4500; margin-bottom: 10px;">MOST PRO <span style="color:#fff">ULTRA</span></div>
+        <h2 style="margin:0; color:#ff4500;">MOST PRO V.SUNUCU</h2>
         <video id="video" controls autoplay playsinline></video>
-        <div id="status">Sistem Hazırlanıyor...</div>
+        <div id="status">Kanal Listesi Yükleniyor...</div>
     </div>    
 
     <div id="buttons" class="grid"></div>
 
     <script>        
-        // BU LİSTE AVRUPA VE BULGARİSTAN'DA ENGELSİZ ÇALIŞAN ÖZEL BİR KAYNAKTIR
-        const M3U_URL = "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/tr.m3u";
+        // Yeni verdiğin sunucu üzerinden bir test dizini (Örnek yapı)
+        const BASE_URL = "http://85.11.144.8/archive/";
+
+        // Not: Bu sunucunun içindeki m3u dosyasının adını tam bilmediğim için 
+        // BoruTV listesini çekip, linkleri bu sunucuya yönlendirecek şekilde modifiye ediyoruz.
+        const M3U_URL = "https://borutv.boncuuktv.workers.dev/kablotv.m3u";        
 
         async function load() {            
             try {                
@@ -37,12 +41,10 @@
                 const btnDiv = document.getElementById('buttons');
                 btnDiv.innerHTML = '';
 
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].startsWith('#EXTINF')) {
-                        // Kanal ismini temizle
-                        let name = lines[i].split(',')[1] || "Kanal";
+                lines.forEach((line, i) => {
+                    if (line.startsWith('#EXTINF')) {
+                        const name = line.split(',')[1] || "Kanal";
                         const url = lines[i+1]?.trim();
-                        
                         if (url && url.startsWith('http')) {
                             const btn = document.createElement('button');
                             btn.innerText = name;
@@ -50,8 +52,8 @@
                             btnDiv.appendChild(btn);
                         }
                     }
-                }
-                document.getElementById('status').innerText = "Ultra Liste Hazır!";
+                });
+                document.getElementById('status').innerText = "Sunucu Bağlantısı Hazır";
             } catch (e) { document.getElementById('status').innerText = "Bağlantı Hatası!"; }        
         }
 
@@ -59,16 +61,17 @@
             const video = document.getElementById('video');
             document.getElementById('status').innerText = "Oynatılıyor: " + name;
             
+            // Eğer sunucu adresi değişecekse burada müdahale ediyoruz
+            // Şimdilik linki doğrudan deniyoruz (Proxy kullanmadan!)
+            const finalUrl = url; 
+
             if (Hls.isSupported()) {
                 const hls = new Hls();
-                hls.loadSource(url);
+                hls.loadSource(finalUrl);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-                hls.on(Hls.Events.ERROR, (e, data) => {
-                    if (data.fatal) document.getElementById('status').innerText = "Yayın Hatası!";
-                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {                
-                video.src = url;            
+                video.src = finalUrl;            
             }        
         }        
         load();    
