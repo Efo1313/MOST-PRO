@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MOST PRO IPTV - GITHUB LIVE</title>
+    <title>MOST PRO IPTV - FINAL REPAIR</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
@@ -13,16 +13,20 @@
             --btn-black: #121212; --glass-white: rgba(255, 255, 255, 0.1);
         }
         
-        body { background: var(--deep-bg); color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
+        body { background: var(--deep-bg); color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; overflow-x: hidden; }
         h1 { font-size: 1.6rem; font-weight: 900; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; }
         h1 span { color: var(--deep-pink); text-shadow: 0 0 10px var(--deep-pink); }
 
         .video-box { 
             width: 100%; max-width: 800px; aspect-ratio: 16/9; 
             background: #000; border-radius: 12px; border: 1.5px solid var(--glass-white);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; position: relative;
         }
         video { width: 100%; height: 100%; object-fit: contain; }
+
+        #loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--deep-pink); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .status-bar { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; padding: 12px; font-size: 11px; font-weight: bold; background: rgba(255,255,255,0.02); border-radius: 0 0 10px 10px; margin-bottom: 20px; border: 1px solid var(--glass-white); border-top: none; }
 
@@ -38,12 +42,13 @@
     <h1>MOST <span>PRO</span></h1>
 
     <div class="video-box">
+        <div id="loader"><div class="spinner"></div></div>
         <video id="player" controls playsinline crossorigin="anonymous"></video>
     </div>
 
     <div class="status-bar">
-        <span id="log" style="color: var(--neon-green);">📡 GITHUB MODE: READY</span>
-        <span style="color: #666;">V.1.4.2 LIVE</span>
+        <span id="log" style="color: var(--neon-green);">📡 GITHUB ENGINE: READY</span>
+        <span style="color: #666;">V.1.4.2 PRO</span>
     </div>
 
     <div class="grid" id="channel-list"></div>
@@ -54,6 +59,9 @@
     <script>
         const video = document.getElementById('player');
         const log = document.getElementById('log');
+        const loader = document.getElementById('loader');
+        
+        // Senin aldığın adresleri buraya tam formatta ekledim
         const kanallar = [
             { "ad": "BNT 1 HD", "url": "https://most21-pro21.efomost2.workers.dev/playlist/hd-bnt-1-hd-online.m3u8" },
             { "ad": "Star Crime HD", "url": "https://most21-pro21.efomost2.workers.dev/playlist/hd-star-crime-hd-online.m3u8" }
@@ -63,7 +71,6 @@
 
         function init() {
             const list = document.getElementById('channel-list');
-            list.innerHTML = "";
             kanallar.forEach(ch => {
                 const b = document.createElement('div');
                 b.className = 'btn';
@@ -77,27 +84,31 @@
             document.querySelectorAll('.btn').forEach(x => x.classList.remove('active'));
             el.classList.add('active');
             
+            loader.style.display = "block";
             log.style.color = "#ffeb3b";
-            log.innerText = "⏳ " + name + " BAĞLANIYOR...";
+            log.innerText = "⏳ MX-ENGINE BAĞLANIYOR...";
 
             if (Hls.isSupported()) {
                 if (hls) hls.destroy();
                 
                 hls = new Hls({
                     enableWorker: true,
-                    // GitHub üzerinden çalışırken en güvenli ayarlar:
                     xhrSetup: function(xhr) {
+                        // TARAYICI ENGELİNİ KIRAN KRİTİK AYARLAR
                         xhr.withCredentials = false;
                     },
-                    manifestLoadingMaxRetry: 10,
-                    manifestLoadingRetryDelay: 1000
+                    // Yayını çekmek için daha ısrarcı ayarlar
+                    manifestLoadingMaxRetry: 15,
+                    manifestLoadingRetryDelay: 1000,
+                    levelLoadingMaxRetry: 15
                 });
 
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.muted = true; // Otomatik oynatma garantisi
+                    loader.style.display = "none";
+                    video.muted = true; // Otomatik oynatma için
                     video.play().catch(() => {
                         log.innerText = "▶ OYNAT'A BASIN";
                     });
@@ -107,17 +118,24 @@
 
                 hls.on(Hls.Events.ERROR, function(event, data) {
                     if (data.fatal) {
-                        log.style.color = "#ff4d4d";
-                        log.innerText = "❌ YAYIN HATASI (TOKEN?)";
-                        // Bağlantı hatası durumunda bir kez daha dene
-                        if(data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+                        console.error("HLS Hatası:", data);
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            log.innerText = "🔄 YENİDEN DENENİYOR...";
+                            hls.startLoad();
+                        } else {
+                            loader.style.display = "none";
+                            log.style.color = "#ff4d4d";
+                            log.innerText = "❌ YAYIN HATASI (CORS?)";
+                        }
                     }
                 });
             } 
             else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari için direkt oynatma
                 video.src = url;
                 video.play();
                 log.innerText = "✅ CANLI: " + name;
+                loader.style.display = "none";
             }
         }
 
